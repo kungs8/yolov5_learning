@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # ROOT加入到环境变量中
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # 相对路径
 
-from utils.general import (check_git_info)
+from utils.general import (check_git_info, print_args)
 
 LOCAL_RANK = int(os.getenv("LOCAL_TANK", -1))
 print(LOCAL_RANK)
@@ -74,10 +74,9 @@ def parse_opt(known=False):
 
 
 def main(opt):
-    # # 检查
-    # if RANK in {-1, 0}:
-    #     print_args(vars(opt))
-    pass
+    # 检查
+    if RANK in {-1, 0}:
+        print_args(vars(opt))
 
 
 if __name__ == '__main__':
