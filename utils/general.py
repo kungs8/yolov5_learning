@@ -48,10 +48,15 @@ def check_git_info(path="."):
     import git
     try:
         repo = git.Repo(path)
-        print(f"===repo:{repo}")
-    except:
-        pass
-        # remote = repo.remotes.origin.url.replace(".git", "")  # i.e. "https://github.com/ultralytics/yolov5"
-        # commit = repo.head.commit.hexsha  # i.e. ""
+        remote = repo.remotes.origin.url.replace(".git", "")  # i.e. "https://github.com/kungs8/yolov5_learning"
+        commit = repo.head.commit.hexsha  # i.e. "b750df5ec0c903b503ceb939d87646b1fc042f56"
+        try:
+            branch = repo.active_branch.name  # i.e. "main"
+        except TypeError:  # 不在任何分支上
+            branch = None
+        return {"remote": remote, "branch": branch, "commit": commit}
+    except git.exc.InvalidGitRepositoryError:  # 路径不是git的路径
+        return {"remote": None, "branch": None, "commit": None}
+
 # def print_args(args: Optional[dict]=None, show_file=True, show_func=False):
 #     """"""
