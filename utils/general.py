@@ -13,11 +13,12 @@ import logging
 import logging.config
 import os
 import platform
+import re
 import sys
 from pathlib import Path
 from typing import Optional
-from utils import emojis
-
+from utils import emojis, TryExcept
+from subprocess import check_output
 # 导入"ultralytics"包 or 不存在则安装
 try:
     import ultralytics
@@ -65,7 +66,6 @@ if platform.system() == "Windows":
         setattr(LOGGER, fn.__name__, lambda x: fn(emojis(x)))  # 表情安全记录
 
 
-
 class WorkingDirectory(contextlib.ContextDecorator):
     """切换命令路径到指定文件夹路径，Usage：@WorkingDirectory(dir) or 'with WorkingDirectory(dir):'上下文管理器"""
     def __init__(self, new_dir):
@@ -77,6 +77,8 @@ class WorkingDirectory(contextlib.ContextDecorator):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         os.chdir(self.cwd)
+
+
 @WorkingDirectory(ROOT)
 def check_git_info(path="."):
     """检查git信息, 返回 {remote, branch, commit}"""
@@ -137,3 +139,45 @@ def print_args(args: Optional[dict]=None, show_file=True, show_func=False):
         file = Path(file).stem
     s = (f"{file}: " if show_file else "") + (f"{func}: " if show_func else "")
     LOGGER.info(colorstr(s) + ", ".join(f"{k}={v}" for k, v in args.items()))
+
+
+def check_online():
+    """互联网连接检查"""
+    import socket
+    def run_once():
+        # 检查一次
+        try:
+            socket.create_connection(("1.1.1.1", 443), 5)  # 检查主机的可访问性
+            return True
+        except OSError:
+            return False
+    return run_once() or run_once()  # 检查两次以提高对间歇性连接问题的稳健性
+
+
+@TryExcept()
+@WorkingDirectory(ROOT)
+def check_git_status(repo="kungs8/yolov5_learning", branch="main"):
+    """项目状态检查，推荐'git pull' 如果代码超出时间"""
+    url= f"https://github.com{repo}"
+    msg = f", for updates see {url}"
+    s = colorstr("github: ")  # string
+    assert Path(".git").exists(), s + "跳过检查（不是 git 存储库）" + msg
+    assert check_online(), s + "跳过检查(离线)" + msg
+
+    splits = re.split(pattern=r"\s", string=check_output("git remote -v", shell=True).decode())
+    matches = [repo in s for s in splits]
+    if any(matches):
+        remote = splits[matches.index(True) - 1]
+    else:
+        remote = "kungs8"
+        check_output(f"git remote add {remote} {url}", shell=True)
+    check_output(f"git fetch {remote}", shell=True, timeout=5)  # git fetch
+    local_branch = check_output("git rev-parse --abbrev-ref HEAD", shell=True).decode().strip()  # checked out
+    # 计算在本地分支和远程仓库的分支之间有多少个提交
+    n = int(check_output(f"git rev-list {local_branch}..{remote}/{branch} --count", shell=True))
+    if n > 0:
+        pull = "git pull" if remote == "origin" else f"git pull {remote}/{branch}"
+        s += f"⚠️ yolov5_learning is out of date by {n} commit{'s'*(n>1)}. Use '{pull}' or 'git clone {url}' to update."
+    else:
+        s += f"up to date with {url} ✅"
+    LOGGER.info(s)

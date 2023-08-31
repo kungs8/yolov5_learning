@@ -18,10 +18,9 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # ROOT加入到环境变量中
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # 相对路径
 
-from utils.general import (check_git_info, print_args)
+from utils.general import (check_git_info, print_args, check_git_status)
 
 LOCAL_RANK = int(os.getenv("LOCAL_TANK", -1))
-print(LOCAL_RANK)
 RANK = int(os.getenv("RANK", -1))
 WORLD_SIZE = int(os.getenv("WORLD_SIZE", 1))
 GIT_INFO = check_git_info()  # 检查git信息
@@ -76,7 +75,10 @@ def parse_opt(known=False):
 def main(opt):
     # 检查
     if RANK in {-1, 0}:
+        # 打印函数参数（可选参数字典）
         print_args(vars(opt))
+        # j检查git状态
+        check_git_status()
 
 
 if __name__ == '__main__':
